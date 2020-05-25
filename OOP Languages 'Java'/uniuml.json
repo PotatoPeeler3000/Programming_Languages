@@ -1,0 +1,65 @@
+{ "class": "Example_Class",
+"fields": ["x", "y"]
+"methods": {
+"Add": []
+}
+}
+
+{ "class": "listable",
+"fields": ["L", "T"]
+"methods": {
+"insert": ["k", "value"]
+"lookup": ["k"]
+"gen_in_order": []
+}
+}
+
+{ "class": "Class",
+"fields": ["name"
+	"methods",
+	"methods_map",
+	"variables",
+	"state_instance",
+	"oprec",
+	"supers",
+	"implemented_classes",
+]
+"methods": {
+"get_name": []
+}
+}
+
+{ "class": "Object",
+"fields": []
+"methods": {
+"clone": ["seen"]
+"to_string": ["depth", "seen"]
+"equals": ["other", "seen"]
+"hash_code": ["depth", "seen"]
+"get_class_name": []
+"get_id": []
+"get_class": []
+"is_instance": ["name"]
+"Type": []
+"instanceOf": ["superClassname"]
+"className": []
+}
+}
+
+{ "class": "ma",
+"fields": []
+
+}
+
+{ "class": "yo",
+"fields": ["a,
+	"ye"
+]
+"methods": {
+"gamer": []
+}
+}
+
+{ "class": "three",
+  "super": ["4"]
+}
