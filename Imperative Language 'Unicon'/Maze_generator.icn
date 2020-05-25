@@ -1,0 +1,838 @@
+#Nick Kitchel
+#CS 210 Unicon
+
+record  rec(a,b)
+
+procedure main()
+
+	cords := rec(0,0)
+	finish := rec(0,0)
+	player := rec(0,0)
+
+	L := list(24, repl(" ", 78))	#generate the sepecified grid
+		
+	every i := 1 to 24 do	#loop through each row
+	{
+			j := 1
+			count := 1
+			num := 1
+
+			while j < 79  do	#loop through each column
+			{	#function call to determine which character is needed		
+				free := is_free(L,i,j, depth, count)	
+
+				if(free = 5) then
+				{	#called if we need a room tile
+					L[i][j] := '-'
+				}
+
+				if(free = 6) then
+				{	#called if we need a wall
+					L[i][j] := '|'
+				}
+
+				if(free = 1) then
+				{		#called if we need a roof of a room section
+					if((L[i -1][j] == "-") | (L[i - 2][j] == "-")) then
+					{	#check if the room needs to continue
+						L[i][j] := '|'
+					} else if((L[i - 4][j] == "|") & (L[i - 2][j] == "|")) then
+					{	#check if we have to stop the room
+						L[i][j] := '-'
+					} else 
+					{
+						rand := ?2	#choice to continue room or stop the depth
+
+						if(rand = 1) then	#if we decide on a room tile
+						{
+							L[i][j] := '-'
+						} else
+						{	#if we have chosen a wall with the random number
+							L[i][j] := '|'
+						}	
+					}
+				}
+
+				if(free = 2) then
+				{	#determine the length of the desired room
+					length := (?15) + 4
+					true := 0
+
+					if(i > 1) then
+					{
+						every h := 0 to length by 1 do
+						{	#checks to see if we have free space for a room
+							if(L[i - 1][j + h] == " ") then
+							{
+								#do nothing
+							} else
+							{	#if we hit a wall then set true to 1
+								true := 1
+							}
+						}
+					}	
+						#if we are free to build
+					if(true = 0) then
+					{	#generate as long as the length is set to
+						every k := 0 to length do
+							L[i][j + k] := '-'
+					
+						L[i][j + length] := ' '	#declare the next one as a space
+						j := j + length
+					} else if(L[i][j - 1] == "-") then
+					{	#if the past one is set then set the next four to the same
+						every k := 0 to 4 do
+							L[i][j + k] := '-'
+					}
+					{	#set free to a space character
+						free := 4
+					}
+				}
+					#this means we are in a room and need a dot
+				if(free = 3) then
+					L[i][j] := '.'
+					#nothing else works so we need a space
+				if(free = 4) then
+					L[i][j] := ' '
+						#the choice is free so we enter another program to decide
+				if(free = 0) then
+					free_row_builder(L,i,j)
+
+				j := j + 1	#add one to j
+			}
+		}
+
+	every i := 1 to 24 do
+	{
+		every j := 1 to 78 do
+		{		#loop through the arary again
+			count := 0
+
+			if(j = 1) then
+				count := count + 1
+				#check if a character is surrounded by spaces
+			if(L[i - 1][j] == " ") then
+				count := count + 1
+					#add something to count each time a space surrounds a character
+			if(L[i + 1][j] == " ") then
+				count := count + 1
+				
+			if(L[i][j - 1] == " ") then
+				count := count + 1
+				
+			if(L[i][j + 1] == " ") then
+				count := count + 1
+					#if count is three or more then we need that character to also be a space
+			if(count > 2) then
+				L[i][j] := " "
+		}	#this is a safety check if the rooms generate incorrectly
+	}
+
+	room := 1
+
+	every i := 1 to 24 do
+	{		#loop through the grid again
+		j := 1
+
+		while(j < 78) do
+		{
+			count := 1
+				#called if we are at the top left of a romm
+			if((L[i][j] == "-") & (L[i + 1][j] == "|") & (L[i][j + 1] == "-")) then
+			{		#counts the perimeter and where doors should be in each room
+					#also builds corridors from each doorway
+				perimeter(L,i,j,room)
+					
+				room := 100	
+			}
+
+			j := j + count
+		}
+	}
+
+	start := 0			#count for starting character
+	ended := 0			#count for ending character
+	apples := ?8 + 4		#count of health items you can pick up
+	enemy := ?8 + 8			#count of number of enemys are spawned
+	shield := ?8 + 8		#shield potions you can pick up
+	weapons := ?8 + 4		#number of weapons you can pick up
+	traps := ?32 + 12			#number of traps that can spawn
+
+	every i := 1 to 24 do
+	{
+		j := 1		#loop through the grid one more time
+
+		while(j < 79) do
+		{	
+		
+			if((traps > 0) & (L[i][j] == "#"))	then	#check if in a corridor and all traps have been placed
+			{
+				rand := ?16		#random choice
+
+				if(rand = 1) then		#if we choice it, we place an trap, to damage the player who walks on it
+				{
+					L[i][j] := '~'
+					traps := traps - 1
+				}
+			}	
+			
+			if((apples > 0) & (L[i][j] == "."))	then	#check if in a room and all apples have been placed
+			{
+				rand := ?120		#random choice
+
+				if(rand = 1) then		#if we choice it, we place an apple, to gain health
+				{
+					L[i][j] := '%'
+					apples := apples - 1
+				}
+			}	
+		
+			if((enemy > 0) & (L[i][j] == ".")) then		#check if in a room and all enemies have been placed
+			{
+				rand := ?48		#random choice
+
+				if(rand = 1) then		#if we choice it, we place an enemy, to be attacked
+				{
+					L[i][j] := 'm'
+					enemy := enemy - 1
+				}
+			}
+
+			if((shield > 0) & (L[i][j] == ".")) then		#check if in a room and all shields have been placed
+			{
+				rand := ?120		#random choice
+
+				if(rand = 1) then		#if we choice it, we place an shield potion, to gain shield
+				{
+					L[i][j] := '*'
+					shield := shield - 1
+				}
+			}
+
+			if((weapons > 0) & (L[i][j] == ".")) then		#check if in a room and all weapons have been placed
+			{
+				rand := ?120		#random choice
+
+				if(rand = 1) then		#if we choice it, we place a sword, to gain attack
+				{
+					L[i][j] := '!'
+					weapons := weapons - 1
+				}
+			}
+				#check if the start character has been placed and we are in a room
+			if((start = 0) & (L[i][j + 1] == ".") & (L[i][j] == ".") & (i < 12) & (j < 49)) then
+			{
+				rand := ?4		#random choice
+
+				if(rand = 1) then		#if we choice it, we place the start character
+				{
+					cords.a := i		#set the starting cords so they are stored
+					cords.b := j
+					L[i][j] := '<'
+					player.a := i		#make the player cords the one in front of it
+					player.b := j + 1
+					L[i][j + 1] := '@'
+					start := 1
+				}
+			}
+					#check if we have placed the start character and we need an end character
+			if((ended = 0) & (start = 1) & (L[i][j] == ".") & (i > 12) & (j > 50)) then
+			{
+				rand := ?2
+
+				if(rand = 1) then		#place if random is choicen
+				{
+					finish.a := i		#record the corrdinates of the finish
+					finish.b := j
+					if(L[i][j - 1] == "|") then
+					{
+						L[i][j + 1] := '>'		#don't allow the finish to be next to a wall
+						finish.b := j + 1
+					}
+					L[i][j] := '>'		#place finish
+					ended := 1
+				}
+			}
+
+
+		
+				#determine if we are in the bottom right of a room
+			if(L[i][j] == "|") & (L[i + 1][j + 1] == "-") then
+				L[i + 1][j] := '-'		#if we are make sure the bottom corrner is a line
+
+			if((j = 78) & (L[i][j] == " ") & (L[i - 1][j] == "#")) then
+				L[i][j] := '#'		#make a '#' if the previous one is
+
+			if((i = 24) & (L[i][j] == " ") & (L[i][j - 1] == "#")) then
+				L[i][j] := '#'		#this goes down the last column and does the same thing as above
+
+			if((j = 1) & (L[i][j] == " ") & (L[i - 1][j] == "#")) then
+				L[i][j] := '#'		#same thing as above but for the first column
+			
+			j := j + 1
+		}			#these are for the edges for some edge cases for connecting corridors
+	}
+
+	write("The player starts at the: @ symbol")
+	write("\"%\" represents an apple, it will restore 10 health")
+	write("\"*\" represents a shield, it will give you 10 shield")
+	write("\"m\" represents a monster, a monster will deal damage to you if you get to close")
+	write("\"!\" represents a sword, you can carry then and use them to deal damage to a monster")
+	write("\"~\" represents a trap, it will damage you if your player walks over it")
+
+		every i := !L do	#print out the finished grid
+			write(i)	
+end
+		
+		#function to determine which free to return
+procedure is_free(grid, row, column, bottom, number)
+			#if this case it true we need a space
+	if((grid[row - 1][column - 1] == "-") & (grid[row - 1][column - 2] == "-") & (grid[row - 2][column - 1] == "|") & (grid[row - 2][column - 2] == "."))then
+	{
+		return 4		#force a space
+	}else if(grid[row][column - 1] == "|") then
+	{		#check if we are in a room
+		if(grid[row - 1][column] == " ") then
+		{
+			return 4	#forces a space
+		}else
+		{
+			return 3	#force a dot if in a room
+		}
+	} else if(grid[row][column - 1] == "-") then
+	{	#check if we are in a room or outside a room
+		if(grid[row - 1][column] == ".") then
+		{		#near bottom left of room
+			return 5	#force a wall '-'
+		} else if(grid[row - 1][column] == "|") then
+		{		#near bottom right of room
+			return 5	#force a wall '-'
+		} else if(grid[row - 1][column - 1] == "|") then
+		{		#outside of room
+			return 4	#force a space
+		} else
+		{		#we need to create a room if none of these are true
+			return 2	#free = 2 to generate a room length
+		}
+	} else if(grid[row][column - 1] == ".") then
+	{		#checking if in a room or not
+		if(grid[row - 1][column + 1] == "-") then
+		{		#in a room need a dot
+			return 3	#forces a dot '.'
+		} else if(grid[row - 1][column] == ".") then
+		{		#also in a room
+			return 3	#forces a dot
+		} else if(grid[row - 1][column] == "|") then
+		{		
+		#we are on the wall
+			return 6 #needs a wall forced
+		}
+		{	#if it all fails we just add a wall by default
+			return 6	#needs a wall
+		}
+	} else if(grid[row - 1][column] == "-") then
+	{		#checking for room again
+		if(grid[row - 2][column] == "|") then
+		{	#we are outside a room
+			return 4	#needs a space
+		} else if(grid[row - 2][column] ==".") then
+		{	#right below a room
+			return 4	#needs a space so rooms don't touch
+		} else
+		{		#the room will either end or continue when this is returned
+			return 1	#forces a wall '|' or a roof '-' by random number
+		}
+	} else if(grid[row - 1][column] == "|") then
+	{		#chech for room again
+		if(row = 24) then
+		{	#if we are at the bottom of grid
+			return 5	#force a roof or room
+		} else
+		{
+			return 1	#else return a room '-' or a wall '|'
+		}
+	}
+
+	return 0
+end
+		#called if we are free to build a random character either a space or a roof
+procedure free_row_builder(grid, row, column)		#makes a room or leaves it
+		
+	rand_num := ?2		#random number between 1 and 2
+
+	if(rand_num = 1) then
+	{		#if number is one we place a space there
+		grid[row][column] := " "
+	}
+	else	#check if roof will fit
+	{
+		true := 0
+
+		if(row > 1) then	#only works after the first row
+		{
+			every h := 0 to 18 by 3 do
+			{		#if the 18 spaces are all spaces
+				if(grid[row - 1][column + h] == " ") then
+				{
+					#do nothing
+				} else
+				{	#set true to 1, meaning we have found a wall, can't make room here
+					true := 1
+				}
+			}
+		}	
+		
+		if((true = 1) | (column > 75) | (row > 21)) then	#force a space if true is 1 or we are at the edges
+		{
+			grid[row][column] := " "
+		} else
+		{		#else if we are free we make the roof of a room, just one space
+			grid[row][column] := "-"
+		}
+	}	
+end
+		#perimeter function to place doors and corridors
+procedure perimeter(grid, row, column, room_check)
+
+	count := 0
+	depth := 1
+	double := ?2		#how many doors will go in each room
+	second := 0
+
+	while(grid[row][column + count] == "-") do
+	{		#find the length of the room currently on
+		count := count + 1
+	}
+
+	while(grid[row + depth][column] == "|") do
+	{		#find the depth of the room currently on
+		depth := depth + 1
+	}
+
+	if((row = 1) & (column = 1)) then
+	{		#if we are in the top left
+		if(double < 2) then	#generate one door if double is 1
+		{
+			wall := ?2 + 1		#put the door on the east or south wall
+		} else
+		{		#this room now has two doors, one per side
+			wall := 2
+			second := 3
+		}	
+	} else if((row + depth > 22) & (column + count > 75)) then
+	{		#if we are in the bottom right of the grid
+		if(double < 2) then		#one or two doors
+		{
+			wall := ?[1,4]		#one door either on north or west wall
+		} else
+		{		#two doors one on each wall
+			wall := 1
+			second := 4
+		}	
+	} else if((row = 1) & (column + count > 75)) then
+	{		#we are in the top right of the grid
+		if(double < 2) then
+		{		#one door on either south or west side
+			wall := ?2 + 2
+		} else
+		{		#two doors one per side
+			wall := 3
+			second := 4
+		}	
+	} else if((column = 1) & (row + depth > 21)) then
+	{		#bottom right of grid
+		if(double < 2) then
+		{		#one door on either east or north side
+			wall := ?2
+		} else
+		{		#two doors one each side
+			wall := 1
+			second := 2
+		}	
+	} else if(column + count > 75) then
+	{		#on the right wall of the grid
+		if(double < 2) then
+		{		#walls on any side but east
+			wall := ?[1,3,4]
+		} else
+		{		#two walls, one on west, and another on north or south
+			wall := ?[1,3]
+			second := 4
+		}	
+	} else if(row + depth = 24) then
+	{		#bottom of grid
+		if(double < 2) then
+		{		#door on any side but south
+			wall := ?[1,2,4]
+		} else
+		{		#two doors, one on west, another on north or east
+			wall := ?2
+			second := 4
+		}	
+	} else if(column = 1) then
+	{		#far left of the grid
+		if(double < 2) then
+		{	#a door on any wall but west
+			wall := ?3
+		} else
+		{		#two doors one on south and another on north or east
+			wall := ?2
+			second := 3
+		}	
+	} else if(row = 1) then
+	{		#top of the grid
+		if(double < 2) then
+		{		#a door on any wall but north
+			 wall := ?3 + 1
+		} else
+		{		#two doors, one on west, another on east or south
+			wall := ?2 + 1
+			second := 4
+		}	
+	} else
+	{		#room no on any side of the grid
+		if(double < 2) then
+		{		#one door can be anywhere
+			wall := ?4
+		} else
+		{		#two doors, one on either the north or east, and another on south or west
+			wall := ?2
+			second := ?2 + 2
+		}	
+	}
+		#called if we are going to place a door on this side of the room
+	if((wall = 1) | (second = 1)) then	#NORTH WALL
+	{
+		rand := ?count - 1	#random piece on the wall
+
+		if(rand < 2) then	#check if it would be on the corner
+			rand := 2		#more it over it is would be
+
+		if(rand = count) then	#check if it would be on a corner
+			rand := count - 1	#subtract one from it
+
+		grid[row][column + rand - 1] := '+'		#set door
+		grid[row - 1][column + rand - 1] := '#'		#set path outside of door
+
+		#go right towards center
+		{
+			temp := 0
+
+			while(grid[row - 1][column + rand + temp] == " ") do		#move towards center
+			{		#if a space then fill it with a path
+				grid[row - 1][column + rand + temp] := '#'
+				temp := temp + 1			
+			}
+
+			if(grid[row - 1][column + rand + temp] ~== "#") then	#if we haven't connected
+			{	#when we hit something check if it is a '#'
+				temp2 := 0
+
+				#go down towards center
+				{		#go in different direction then starting looking for path
+					while(grid[row + temp2][column + rand + temp - 1] == " ") do
+					{
+						grid[row + 1 + temp2][column + rand + temp - 1] := '#'
+						temp2 := temp2 + 1			
+					}
+				} 
+				#go up towards
+				{		#do the samething as above just in the other direction
+					while(grid[row - 2 - temp2][column + rand + temp - 1] == " ") do
+					{
+						grid[row - 2 - temp2][column + rand + temp - 1] := '#'
+						temp2 := temp2 + 1			
+					}			
+				}		#one goes up while the other goes down	
+			}
+		}
+
+		#go right towards center
+		{
+			temp := 0
+					#goes right till we hit something
+			while(grid[row - 1][column + rand - 2 - temp] == " ") do
+			{		#fills with corridor
+				grid[row - 1][column + rand - 2 - temp] := '#'
+				temp := temp + 1			
+			}
+					#check to see if we have hit a corridor
+			if(grid[row - 1][column + rand - 2 - temp] ~== "#") then	#if we haven't connected
+			{
+				temp2 := 0
+
+				#go down towards center
+				{		#if we haven't look down till we reach something
+					while(grid[row + temp2][column + rand - 2 - temp] == " ") do
+					{		#fill with a corridor while moving
+						grid[row + temp2][column + rand - 2 - temp] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+				#go up towards
+				{		#do the same thing but for the up direction
+					while(grid[row - 2 - temp2][column + rand - 2 - temp] == " ") do
+					{
+						grid[row - 2 - temp2][column + rand - 2 - temp] := '#'
+						temp2 := temp2 + 1			
+					}			
+				}				
+			}
+		}
+	}
+			#moving to the east wall if we decided to place a door there
+	if((wall = 2) | (second = 2)) then	#EAST WALL
+	{
+		rand := ?depth - 1		#for a random door on the side of a room
+
+		if(rand < 2) then		#prevent edge cases where it will spawn on a corner
+			rand := 2
+
+		if(rand = depth) then
+			rand := depth - 2
+
+		grid[row + rand][column + count - 1] := '+'		#make door
+		grid[row + rand][column + count] := '#'		#start corridor outside of room
+
+		#go down towards center
+		{
+			temp := 0
+					#while nothing, travel down
+			while(grid[row + rand + 1 + temp][column + count] == " ") do
+			{
+				grid[row + rand + 1 + temp][column + count] := '#'
+				temp := temp + 1			
+			}
+				#if we didn't hit another corridor, continue but with sideways directions
+			if(grid[row + rand + 1 + temp][column + count] ~== "#") then	#if we haven't connected
+			{
+
+				#go to the right
+				{
+					temp2 := 0
+							#go right till we hit something
+					while(grid[row + rand + temp][column + count + 1 + temp2] == " ") do
+					{
+						grid[row + rand + temp][column + count + 1 + temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+				#go to the left
+				{
+					temp2 := 0
+							#go left until we hit something
+					while(grid[row + rand + temp][column + count - 1 - temp2] == " ") do
+					{
+						grid[row + rand + temp][column + count - 1 - temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}
+		}
+
+		if(row > 5) then
+		{
+			temp := 0
+					#while we don't hit something, we travel up
+			while(grid[row + rand - 1 - temp][column + count] == " ") do
+			{
+				grid[row + rand - 1 - temp][column + count] := '#'
+				temp := temp + 1			
+			}
+					#if we didn't hit a corridor, we continue along in other directions
+			if(grid[row + rand - 1 - temp][column + count] ~== "#") then	#if we haven't connected
+			{
+				#go right towards center
+				{
+					temp2 := 0
+								#go right till we hit something and build corridor
+					while(grid[row + rand - temp][column + count + 1 + temp2] == " ") do
+					{
+						grid[row + rand - temp][column + count + 1 + temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				} #else
+				{
+					temp2 := 0
+							#go left until we hit something and build corridor
+					while(grid[row + rand - temp][column + count - 1 - temp2] == " ") do
+					{
+						grid[row + rand - temp][column + count - 1 - temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}
+		}
+	}
+		#if a door needs to be on the south wall
+	if((wall = 3) | (second = 3)) then	#SOUTH WALL
+	{
+		rand := ?count - 1		#decide where it will be randomly placed
+
+		if(rand < 2) then		#prevent corners from being doors
+			rand := 2
+
+		if(rand = count) then
+			rand := count - 1
+
+		grid[row + depth][column + rand - 1] := '+'		#place door and start the corridor from the door
+		grid[row + depth + 1][column + rand - 1] := '#'
+
+		#go to the right
+		{
+			temp := 0
+					#while nothing is found continue placing the corridor
+			while(grid[row + depth + 1][column + rand + temp] == " ") do
+			{
+				grid[row + depth + 1][column + rand + temp] := '#'
+				temp := temp + 1			
+			}
+					#if we didn't find another corridor, continue in other directions
+			if(grid[row + depth + 1][column + rand + temp] ~== "#") then	#if we haven't connected
+			{
+				#go down
+				{
+					temp2 := 0
+							#place corridor down until we hit something
+					while(grid[row + depth + 1 + temp2][column + rand + temp - 1] == " ") do
+					{
+						grid[row + depth + 1 + temp2][column + rand + temp - 1] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+				#go to the left
+				{
+					temp2 := 0
+							#corridor builds left until we hit something
+					while(grid[row + depth - temp2][column + rand + temp - 1] == " ") do
+					{
+						grid[row + depth - temp2][column + rand + temp - 1] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}		
+		}
+
+		#build to the right towards the center
+		{
+			temp := 0
+					#build corridor while we haven't hit anything
+			while(grid[row + depth + 1][column + rand - 2 - temp] == " ") do
+			{
+				grid[row + depth + 1][column + rand - 2 - temp] := '#'
+				temp := temp + 1			
+			}
+					#if we hit a corridor, stop otherwise continue in different directions
+			if(grid[row + depth + 1][column + rand - 2 - temp] ~== "#") then	#if we haven't connected
+			{
+				#go down
+				{
+					temp2 := 0
+							#keep building down until we hit something
+					while(grid[row + depth + 2 + temp2][column + rand - 1 - temp] == " ") do
+					{
+						grid[row + depth + 2 + temp2][column + rand - 1 - temp] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+				#go up
+				{
+					temp2 := 0
+							#keep going up until we hit something
+					while(grid[row + depth - temp2][column + rand - temp - 1] == " ") do
+					{
+						grid[row + depth - temp2][column + rand - temp - 1] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}	
+		}
+	}
+		#this is when we have choicen a door on the west wall
+	if((wall = 4) | (second = 4)) then	#WEST WALL
+	{
+		rand := ?depth - 1		#random location for the door on the wall
+
+		if(rand < 2) then		#prevent corner cases on west wall
+			rand := 2
+
+		if(rand = depth) then
+			rand := depth - 2
+
+		grid[row + rand][column] := '+'		#place door and start the corridor in front of it
+		grid[row + rand][column - 1] := '#'
+
+		#go down towards center
+		{
+			temp := 0
+					#same as the others, go until we hit something
+			while(grid[row + rand + 1 + temp][column - 1] == " ") do
+			{
+				grid[row + rand + 1 + temp][column - 1] := '#'
+				temp := temp + 1			
+			}
+					#check if we have reached a corridor, if not, continue in other directions
+			if(grid[row + rand + 1 + temp][column - 1] ~== "#") then	#if we haven't connected
+			{
+
+				#go to the right
+				{
+					temp2 := 0
+							#build until we hit something
+					while(grid[row + rand + temp][column + temp2] == " ") do
+					{
+						grid[row + rand + temp][column + temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}#go to the left
+				{
+					temp2 := 0
+							#build corridor till we hit something
+					while(grid[row + rand + temp][column - 2 - temp2] == " ") do
+					{
+						grid[row + rand + temp][column - 2 - temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}
+		} 
+
+		if(row > 5) then		#call this is we should be building up
+		{		#if row < 5 then we are at the top so there can't be any rooms above it
+				#don't need a path going up there then
+			temp := 0
+					#create corridor up towards center
+			while(grid[row + rand - 1 - temp][column - 1] == " ") do
+			{
+				grid[row + rand - 1 - temp][column - 1] := '#'
+				temp := temp + 1			
+			}
+					#check if we have hit a corridor
+			if(grid[row + rand - 1 - temp][column - 1] ~== "#") then	#if we haven't connected
+			{
+
+				#go to the right
+				{
+					temp2 := 0
+							#build corridor to the right until we hit something
+					while(grid[row + rand - temp][column + temp2] == " ") do
+					{
+						grid[row + rand - temp][column + temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+				#go to the left
+				{
+					temp2 := 0
+							#build to the left until we hit something
+					while(grid[row + rand - temp][column - 2 - temp2] == " ") do
+					{
+						grid[row + rand + temp][column - 2 - temp2] := '#'
+						temp2 := temp2 + 1			
+					}
+				}
+			}
+		}	
+	}
+		#end of function
+end
