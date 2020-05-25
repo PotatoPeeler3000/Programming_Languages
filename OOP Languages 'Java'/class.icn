@@ -1,0 +1,24 @@
+class Example_Class (x,y)
+   method Add()
+      return x + y
+   end
+initially
+   x := y := 0
+end
+
+class listable(L,T)
+   method insert(k,value)
+      /value := k
+      T[k] := value
+      put(L, value)
+   end
+   method lookup(k)
+      return T[k]
+   end
+   method gen_in_order()
+      suspend !L
+   end
+initially(defaultvalue)
+   L := [ ]
+   T := table(defaultvalue)
+end
